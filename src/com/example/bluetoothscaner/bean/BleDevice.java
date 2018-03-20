@@ -1,13 +1,15 @@
-package com.example.bluetoothscaner;
+package com.example.bluetoothscaner.bean;
 
-public class BlueToothInfo {
+public class BleDevice {
 
 	private String address;
-	private String rssi;
+	private String name;
+	private int rssi;
 	
-	public BlueToothInfo(String address, String rssi) {
+	public BleDevice(String address, String name, int rssi) {
 		// TODO Auto-generated constructor stub
 		this.address=address;
+		this.name=name;
 		this.rssi=rssi;
 	}
 	
@@ -17,10 +19,16 @@ public class BlueToothInfo {
 	public void setAddress(String address) {
 		this.address = address;
 	}
-	public String getRssi() {
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public int getRssi() {
 		return rssi;
 	}
-	public void setRssi(String rssi) {
+	public void setRssi(int rssi) {
 		this.rssi = rssi;
 	}
 	
@@ -28,9 +36,9 @@ public class BlueToothInfo {
 	public String toString() {
 		// TODO Auto-generated method stub
 		StringBuffer sBuffer=new StringBuffer();
-		sBuffer.append("Adss£º");
+		sBuffer.append("Addr£º");
 		sBuffer.append(address);
-		sBuffer.append("      Rssi:");
+		sBuffer.append(", Rssi:");
 		sBuffer.append(rssi);
 		return sBuffer.toString();
 	}

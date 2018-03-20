@@ -3,14 +3,20 @@ package com.example.bluetoothscaner;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.bluetoothscaner.bean.BleDevice;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
+import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,11 +35,12 @@ public class MainActivity extends Activity {
 	
 //	private BluetoothManager bluetoothManager;
 	private BluetoothAdapter bluetoothAdapter;
-	private List<BlueToothInfo> deviceList;
+	private List<BleDevice> deviceList;
 	private ScanThread scanThread;
 	private static final int A_NEW_DEVICE_SCANED=0;
 	private static final int SCAN_DEVICE_COMPLATE=1;
-	private ArrayAdapter<BlueToothInfo> adapter;
+	private static final int REQUEST_BLE_ENABLE=2;
+	private ArrayAdapter<BleDevice> adapter;
 	private boolean blePrepared=false;
 	
 	@SuppressLint("HandlerLeak")
@@ -46,7 +53,7 @@ public class MainActivity extends Activity {
 				break;
 
 			case SCAN_DEVICE_COMPLATE:
-				setMTextColor("扫描设备完成！","#6699FF");
+				setMTextColor("已获得所有蓝牙设备！","#6699FF");
 				scanBtn.setText("重新扫描");
 				scanThread.interrupt();
 				break;
@@ -80,9 +87,9 @@ public class MainActivity extends Activity {
 		bleList=findViewById(R.id.main_BleList);
 		
 		if (deviceList==null) {
-			deviceList=new ArrayList<BlueToothInfo>();
+			deviceList=new ArrayList<BleDevice>();
 		}
-		adapter=new ArrayAdapter<BlueToothInfo>(this, android.R.layout.simple_list_item_1, deviceList);
+		adapter=new ArrayAdapter<BleDevice>(this, android.R.layout.simple_list_item_1, deviceList);
 		bleList.setAdapter(adapter);
 		
 		ViewStub infoStub=findViewById(R.id.main_infoStub);
@@ -90,27 +97,33 @@ public class MainActivity extends Activity {
 			callbackText=infoStub.inflate().findViewById(R.id.tv_callback);
 		}
 		
-//		if (bluetoothManager==null) {
-//		   bluetoothManager= (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
-//		}
-		
-		bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
-		if (bluetoothAdapter.isEnabled()) {
-			blePrepared=true;
-		}else {
-			blePrepared=false;
-		}
-		
-		if (blePrepared) {
-			setMTextColor("正在扫描蓝牙设备...", "#ff00ff00");
-			if (scanThread==null) {
-				scanThread=new ScanThread(bluetoothAdapter, handler);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//			if (bluetoothManager==null) {
+//			   bluetoothManager= (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+//			}
+			
+			bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
+			if (bluetoothAdapter.isEnabled()) {
+				blePrepared=true;
+			}else {
+				blePrepared=false;
 			}
-			if (!scanThread.isAlive()) {
-				scanThread.run();
+			
+			if (blePrepared) {
+				setMTextColor("正在扫描蓝牙设备...", "#ff00ff00");
+				if (scanThread==null) {
+					scanThread=new ScanThread(bluetoothAdapter, handler);
+				}
+				if (!scanThread.isAlive()) {
+					scanThread.run();
+				}
+			}else {
+				setMTextColor("本地蓝牙设备不可用", "#ffff0000");
+				Intent enabler = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);  
+				startActivityForResult(enabler, REQUEST_BLE_ENABLE); 
 			}
 		}else {
-			setMTextColor("尚未打开蓝牙", "#ffff0000");
+			setMTextColor("当前系统不支持该功能", "#ffff0000");
 		}
 	}
 	
@@ -118,6 +131,23 @@ public class MainActivity extends Activity {
 		callbackText.setText(text);
 		callbackText.setTextColor(Color.WHITE);
 		callbackText.setBackgroundColor(Color.parseColor(color));
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		// TODO Auto-generated method stub
+		switch (requestCode) {
+		case REQUEST_BLE_ENABLE:
+			Log.i("BLE", resultCode+"");
+			if (resultCode == RESULT_OK) {
+				scanBle();
+			}
+			break;
+
+		default:
+			break;
+		}
+		super.onActivityResult(requestCode, resultCode, data);
 	}
 
 	@Override
@@ -144,7 +174,7 @@ public class MainActivity extends Activity {
 		
 		private BluetoothLeScanner bluetoothLeScanner;
 		private Handler sHandler;
-		private static final int TIME_OUT=10;
+		private static final int TIME_OUT=15;
 		
 		public ScanThread(BluetoothAdapter bluetoothAdapter, Handler handler) {
 			// TODO Auto-generated constructor stub
@@ -156,14 +186,16 @@ public class MainActivity extends Activity {
 			
 			public void onScanResult(int callbackType, android.bluetooth.le.ScanResult result) {
 				
+				BluetoothDevice device=result.getDevice();
 				boolean isExits=false;
-				for(BlueToothInfo info: deviceList){
-					if (info.getAddress().equals(result.getDevice().getAddress())) {
+				for(BleDevice info: deviceList){
+					if (info.getAddress().equals(device.getAddress())) {
 						isExits=true;
 					}
 				}
-;				if (!isExits) {
-					deviceList.add(new BlueToothInfo(result.getDevice().getAddress(), result.getRssi()+""));
+		
+				if (!isExits) {
+					deviceList.add(new BleDevice(device.getAddress(), "", result.getRssi()));
 					handler.sendEmptyMessage(A_NEW_DEVICE_SCANED);
 				}
 			};
