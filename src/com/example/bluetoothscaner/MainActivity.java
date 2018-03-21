@@ -6,6 +6,7 @@ import java.util.List;
 import com.example.bluetoothscaner.bean.BleDevice;
 import com.example.bluetoothscaner.weight.ScanView;
 import com.example.bluetoothscaner.weight.ScanView.OnPointUpdateListener;
+import com.example.bluetoothscaner.weight.ScanedPoint;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -51,8 +52,7 @@ public class MainActivity extends Activity {
 	private ArrayAdapter<BleDevice> adapter;
 	private boolean blePrepared=false;
 	private int count=0;
-	private List<Integer> pointX;
-	private List<Integer> pointY;
+	private List<ScanedPoint> points;
 
 	@SuppressLint("HandlerLeak")
 	private Handler handler=new Handler(){
@@ -63,20 +63,18 @@ public class MainActivity extends Activity {
 //			    adapter.notifyDataSetChanged();
 				count++;
 				setMTextColor("已扫描到蓝牙设备("+count+")个...", "#ff00ff00");
-				pointX.add((int)(300*(Math.random()-1)));
-				pointY.add((int)(200*(Math.random()-1)));
+				points.add(new ScanedPoint((float)((Math.random()*4-2)*100),
+						(float)((Math.random()*4-2)*100)));
 				break;
 
 			case SCAN_DEVICE_COMPLATE:
 				setMTextColor("已获得所有蓝牙设备("+count+"个)","#6699FF");
+				count=0;
+				scanBtn.setVisibility(View.VISIBLE);
 				scanBtn.setText("重新扫描");
 				scanThread.interrupt();
-				count=0;
-
-				if (scanView!=null) {
-					scanView.stop();
-					scanView.setVisibility(View.GONE);
-				}
+			
+				scanView.stop();
 
 				if (bleList==null) {
 					ViewGroup.LayoutParams bleListPL=new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 
@@ -125,14 +123,13 @@ public class MainActivity extends Activity {
 	private void scanBle() {
 		// TODO Auto-generated method stub
 		//		bleList=findViewById(R.id.main_BleList);
-		
 		ViewStub infoStub=findViewById(R.id.main_infoStub);
 		if (infoStub!=null) {
 			callbackText=infoStub.inflate().findViewById(R.id.tv_callback);
 		}
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-
+			
 			bluetoothAdapter=BluetoothAdapter.getDefaultAdapter();
 			if (bluetoothAdapter.isEnabled()) {
 				blePrepared=true;
@@ -143,15 +140,6 @@ public class MainActivity extends Activity {
 			if (blePrepared) {
 				setMTextColor("正在扫描蓝牙设备...", "#ff00ff00");
 				scanBtn.setText("正在扫描...");
-				
-				if (pointX==null) {
-					pointX=new ArrayList<Integer>();
-				}
-				if (pointY==null) {
-					pointY=new ArrayList<Integer>();
-				}
-				pointX.clear();
-				pointY.clear();
 				
 				if (deviceList==null) {
 					deviceList=new ArrayList<BleDevice>();
@@ -166,6 +154,7 @@ public class MainActivity extends Activity {
 							ViewGroup.LayoutParams.MATCH_PARENT);
 					scanView=new ScanView(this);
 					scanView.setLayoutParams(scanViewLP);
+					scanView.setAutoHide(true);
 					container.addView(scanView);
 					
 					scanView.setOnPointUpdateListener(new OnPointUpdateListener() {
@@ -173,24 +162,24 @@ public class MainActivity extends Activity {
 						@Override
 						public void OnUpdate(Canvas canvas, Paint paintPoint, float cx, float cy, float radius) {
 							// TODO Auto-generated method stub
-							for (int i = 0; i < pointX.size(); i++) {
-								canvas.drawCircle(cx+pointX.get(i), cy+pointY.get(i), 5, paintPoint);
+							for (int i = 0; i < points.size(); i++) {
+								canvas.drawCircle(cx+points.get(i).getPointX(), cy+points.get(i).getPointY(), 5, paintPoint);
 							}
 						}
 					});
-				}else {
-					if (scanView.getVisibility()==View.GONE) {
-						scanView.setVisibility(View.VISIBLE);
-					}
-				}	
+				}
 				scanView.start();
 				
-				if (scanThread==null) {
-					scanThread=new ScanThread(bluetoothAdapter, handler);
+				if (points==null) {
+				    points=new ArrayList<ScanedPoint>();
 				}
-				if (!scanThread.isAlive()) {
-					scanThread.run();
-				}
+				points.clear();
+				
+				scanThread=new ScanThread(bluetoothAdapter, handler);
+                scanThread.start();
+                
+                scanBtn.setVisibility(View.INVISIBLE);
+				
 			}else {
 				setMTextColor("本地蓝牙设备不可用", "#ffff0000");
 				Intent enabler = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);  

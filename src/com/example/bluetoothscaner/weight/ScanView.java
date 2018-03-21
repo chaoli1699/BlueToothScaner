@@ -39,6 +39,7 @@ public class ScanView extends View {
 
 	private ScanThread scanThread;  //线程
 	private Matrix matrix;  //矩阵
+	private boolean autoHide=false;
 
 	public ScanView(Context context, AttributeSet attrs) {
 	    this(context, attrs,0);
@@ -121,6 +122,11 @@ public class ScanView extends View {
 	    //mPaintSector设置颜色渐变渲染器
 	    mPaintSector.setShader(shader);
 	}
+	
+	public void setAutoHide(boolean autoHide){
+	    this.autoHide=autoHide;
+	}
+	
 	//设置循环的方向
 	public void setDirection(int d){
 	    if(d != CLOCK_WISE && d != ANSI_CLOCK_WISE){
@@ -131,6 +137,9 @@ public class ScanView extends View {
 
 	//线程开启
 	public void start(){
+		if (autoHide) {
+			this.setVisibility(View.VISIBLE);
+		}
 	    scanThread = new ScanThread(this);
 	    scanThread.setName("radar");
 	    isRunning = true;
@@ -140,6 +149,9 @@ public class ScanView extends View {
 	//线程结束
 	public void stop(){
 	    if(isStart){
+	    	if (autoHide) {
+				this.setVisibility(GONE);
+			}
 	        isStart = false;
 	        isRunning = false;
 	    }
